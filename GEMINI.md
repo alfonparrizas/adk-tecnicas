@@ -111,6 +111,27 @@ If a `Makefile` is not present, use the following `adk` commands:
   client = Client(vertexai=True, project='fon-test-project', location='global')
   print([m.name for m in client.models.list()])
   ```
-- **Location vs. Region**: Follow the **Project Configuration** at the top of this file. Use the specified **deployment region** for infrastructure and the **model location** for model initialization.
-- **Remote Query API**: Deployed `AgentEngine` objects use `async_stream_query(...)`. **MANDATORY**: You must include the `user_id` and `message` parameters. Do **not** use `async_query(...)` as it will raise an `AttributeError`.
+- **Location vs. Region**: Follow the **Project Configuration** at the top of this file. Use the specified **deployment region** for infrastructure and the **model location** for model initialization. **CRITICAL**: `vertexai.init(location=...)` must match the actual region where the agent was deployed (e.g., `us-west1` or `europe-west1`).
+- **Remote Query API (Python SDK)**: 
+  - **Import**: `from vertexai.preview import reasoning_engines`
+  - **Initialization**: `remote_agent = reasoning_engines.ReasoningEngine("projects/.../locations/.../reasoningEngines/ID")`
+  - **Usage**: Deployed `AgentEngine` objects primarily use `async_stream_query(...)` or `stream_query(...)`.
+  - **MANDATORY**: You must include the `user_id` and `message` parameters.
+  - **Example (Async)**:
+    ```python
+    import asyncio
+    async def call_agent():
+        responses = remote_agent.async_stream_query(message="Hello", user_id="user-123")
+        async for event in responses:
+            print(event)
+    asyncio.run(call_agent())
+    ```
+- **Fallback Verification (CURL)**: If the Python SDK fails to register methods, use the REST API:
+  ```bash
+  curl -X POST \
+    -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+    -H "Content-Type: application/json" \
+    https://[REGION]-aiplatform.googleapis.com/v1/projects/[PROJECT]/locations/[REGION]/reasoningEngines/[ID]:streamQuery \
+    -d '{"input": {"message": "Your message", "user_id": "test-user"}}'
+  ```
 - **404 Handling**: If `gemini-2.5-flash` returns a 404, verify that the project has explicit access to that specific model version in the `global` location.

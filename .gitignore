@@ -1,40 +1,25 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+# Instrucciones de ADK
+# Solo queremos mantener GEMINI.md y este .gitignore
 
-# C extensions
-*.so
+# Ignorar todo por defecto
+*
+# Permitir GEMINI.md y .gitignore
+!GEMINI.md
+!.gitignore
 
-# Distribution / packaging
-bin/
-build/
-develop-eggs/
-dist/
-eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
+# Ignorar carpetas generadas por ADK y herramientas
 .venv/
-venv/
-ENV/
+.adk/
+app/
+tests/
+scripts/
+adk_agent_template.egg-info/
 
-# IDEs
-.vscode/
-.idea/
-
-# Environment variables
-.env
-
-# ADK related
-eval_results/
-logs/
-artifacts/
+# Ignorar archivos de metadatos y configuración
+Makefile
+README.md
+pyproject.toml
+uv.lock
+deployment_metadata.json
+*.json
+*.py
