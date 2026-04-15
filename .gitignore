@@ -1,25 +1,39 @@
-# Instrucciones de ADK
-# Solo queremos mantener GEMINI.md y este .gitignore
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Ignorar todo por defecto
-*
-# Permitir GEMINI.md y .gitignore
-!GEMINI.md
-!.gitignore
+# Caches and logs
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.log
 
-# Ignorar carpetas generadas por ADK y herramientas
+# Virtual environments
 .venv/
-.adk/
-app/
-tests/
-scripts/
-adk_agent_template.egg-info/
+venv/
+ENV/
 
-# Ignorar archivos de metadatos y configuración
-Makefile
-README.md
-pyproject.toml
-uv.lock
+# ADK and tool-specific
+.adk/
+adk_agent_template.egg-info/
+dist/
+build/
+
+# Local configuration and secrets
+.env
+.env.local
+*.secret
+*.pem
 deployment_metadata.json
-*.json
-*.py
+
+# Terraform (Infrastructure as Code)
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# OS files
+.DS_Store
+Thumbs.db
