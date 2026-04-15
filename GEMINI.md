@@ -1,14 +1,5 @@
 # Coding Agent Guide
 
-## Project Configuration
-
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| **Deployment Region** | `europe-west1` | Target region for all deployments |
-| **Model Location** | `global` | Location for Gemini 3 series models |
-
----
-
 ## Reference Documentation
 
 If you have ADK skills available, use those instead of fetching the URLs below.
@@ -22,30 +13,20 @@ Otherwise, fetch these resources as needed:
 
 ---
 
-## Quick Start for AI Assistants
-
-If you need to quickly set up a test agent in this cloned repository, follow these steps:
-
-1.  **Initialize Environment**: Create a virtual environment and install dependencies.
-    ```bash
-    uv venv && source .venv/bin/activate && uv pip install -e .
-    ```
-2.  **Bootstrap Agent**: Since this is a template, use `agent-starter-pack enhance` to scaffold a prototype agent in the current directory.
-    ```bash
-    uvx agent-starter-pack enhance . --agent adk --prototype -y
-    ```
-3.  **Run & Debug**: Start the ADK web interface and use the `chrome-devtools` skill to verify agent behavior.
-    ```bash
-    adk web .
-    ```
-
 ## Development Phases
 
 ### Phase 1: Understand Requirements
 Before writing any code, understand the project's requirements, constraints, and success criteria.
 
+**Note on Google Cloud Authentication:**
+Ensure you are authenticated with Google Cloud before proceeding. Run the following commands:
+- `gcloud auth login` to authenticate your account.
+- `gcloud auth application-default login` to set up Application Default Credentials (ADC) for Vertex AI.
+- `gcloud config set project [YOUR_PROJECT_ID]` to set your active project.
+- `gcloud auth list` to verify your active account.
+
 ### Phase 2: Build and Implement
-Implement agent logic in `app/`. Use `make playground` for interactive testing. Iterate based on user feedback.
+Implement agent logic in `app/`. Use `make playground` for interactive testing via the web UI. For fast, text-based validation or when testing programmatically (e.g., by another agent), use `uv run adk run ./app`. Iterate based on user feedback.
 
 ### Phase 3: The Evaluation Loop (Main Iteration Phase)
 Start with 1-2 eval cases, run `make eval`, iterate. Expect 5-10+ iterations. See the **Evaluation Guide** for metrics, evalset schema, LLM-as-judge config, and common gotchas.
@@ -54,84 +35,59 @@ Start with 1-2 eval cases, run `make eval`, iterate. Expect 5-10+ iterations. Se
 Run `make test`. Fix issues until all tests pass.
 
 ### Phase 5: Deploy to Dev
-**Requires explicit human approval.** Run `make deploy` only after user confirms.
-> [!IMPORTANT]
-> Always use the project's default deployment region (`europe-west1`) and model location (`global`).
+**Requires explicit human approval.** Run `make deploy` only after user confirms. See the **Deployment Guide** for details.
 
-See the **Deployment Guide** for details.
+**Controlling the Deployment Region:**
+The deployment script uses the `GOOGLE_CLOUD_REGION` environment variable or defaults to `us-west1`. To specify a region, run:
+- `export GOOGLE_CLOUD_REGION=europe-west1 && make deploy`
+- Or use the `REGION` variable if supported: `make deploy REGION=europe-west1`.
+
+Always verify the region in the deployment logs before confirming the operation.
+
+**Verifying the Deployment (Phase 4):**
+To avoid SDK versioning issues, use direct REST calls via `curl` for the most reliable verification.
+
+1. **Locate your agent details:** Identify your `PROJECT_ID`, `LOCATION` (e.g., `us-west1`), and `RESOURCE_ID` (the 19-digit number) from the deployment logs.
+2. **The "Golden" Verification Command:** Use `async_stream_query` to verify the agent can call tools and respond:
+   ```bash
+   curl -s -X POST \
+   -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+   -H "Content-Type: application/json" \
+   https://{LOCATION}-aiplatform.googleapis.com/v1/projects/{PROJECT_ID}/locations/{LOCATION}/reasoningEngines/{RESOURCE_ID}:streamQuery?alt=sse \
+   -d '{
+     "class_method": "async_stream_query",
+     "input": {
+       "user_id": "test_user",
+       "message": "What is the current time in San Francisco?"
+     }
+   }'
+   ```
+3. **Troubleshooting Methods:** If the command above fails with "method not found", call the endpoint with a wrong method name to see the list of available methods in the error message.
 
 ### Phase 6: Production Deployment
 Ask the user: Option A (simple single-project) or Option B (full CI/CD pipeline with `uvx agent-starter-pack setup-cicd`). See the [deployment docs](https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/refs/heads/main/docs/guide/deployment.md) for step-by-step instructions.
 
-## Development Commands (ADK CLI)
-
-If a `Makefile` is not present, use the following `adk` commands:
+## Development Commands
 
 | Command | Purpose |
 |---------|---------|
-| `adk web .` | Start interactive web interface (playground) |
-| `adk run --local` | Run agent locally in terminal |
-| `adk eval <dir> <evalset>` | Run evaluation against evalsets |
-| `pytest` | Run unit and integration tests |
-| `ruff check .` | Check code quality |
-
-*Note: Always ensure your virtual environment is active before running these commands.*
-
-## Development Commands (Makefile)
-
-| Command | Purpose |
-|---------|---------|
-| `make playground` | Interactive local testing |
+| `make playground` | Interactive local testing (Web UI) |
+| `uv run adk run ./app` | Fast CLI-based interaction (preferred for automated agent testing) |
 | `make test` | Run unit and integration tests |
 | `make eval` | Run evaluation against evalsets |
 | `make eval-all` | Run all evalsets |
 | `make lint` | Check code quality |
 | `make setup-dev-env` | Set up dev infrastructure (Terraform) |
-| `make deploy` | Deploy to dev |
+| `make deploy` | Deploy the agent to Agent Engine |
 
 ---
 
 ## Operational Guidelines for Coding Agents
 
 - **Code preservation**: Only modify code directly targeted by the user's request. Preserve all surrounding code, config values (e.g., `model`), comments, and formatting.
-- **NEVER change the model** unless explicitly asked. Use `gemini-3-flash-preview` or `gemini-3-pro-preview` for new agents.
-- **Model 404 errors**: Fix `GOOGLE_CLOUD_LOCATION` (e.g., `global` instead of `us-central1`), not the model name.
+- **NEVER change the model** unless explicitly asked. Use `gemini-3-flash-preview` or `gemini-3.1-pro-preview` for new agents.
+- **Model 404 errors**: Fix `GOOGLE_CLOUD_LOCATION` (e.g., `global` instead of `europe-west1`), not the model name.
 - **ADK tool imports**: Import the tool instance, not the module: `from google.adk.tools.load_web_page import load_web_page`
 - **Run Python with `uv`**: `uv run python script.py`. Run `make install` first.
 - **Stop on repeated errors**: If the same error appears 3+ times, fix the root cause instead of retrying.
 - **Terraform conflicts** (Error 409): Use `terraform import` instead of retrying creation.
-
----
-
-## Project-Specific Troubleshooting & Gotchas
-
-- **Model Availability**: To verify which Flash models are available in the `global` location, run:
-  ```python
-  from google.genai import Client
-  client = Client(vertexai=True, project='fon-test-project', location='global')
-  print([m.name for m in client.models.list()])
-  ```
-- **Location vs. Region**: Follow the **Project Configuration** at the top of this file. Use the specified **deployment region** for infrastructure and the **model location** for model initialization. **CRITICAL**: `vertexai.init(location=...)` must match the actual region where the agent was deployed (e.g., `us-west1` or `europe-west1`).
-- **Remote Query API (Python SDK)**: 
-  - **Import**: `from vertexai.preview import reasoning_engines`
-  - **Initialization**: `remote_agent = reasoning_engines.ReasoningEngine("projects/.../locations/.../reasoningEngines/ID")`
-  - **Usage**: Deployed `AgentEngine` objects primarily use `async_stream_query(...)` or `stream_query(...)`.
-  - **MANDATORY**: You must include the `user_id` and `message` parameters.
-  - **Example (Async)**:
-    ```python
-    import asyncio
-    async def call_agent():
-        responses = remote_agent.async_stream_query(message="Hello", user_id="user-123")
-        async for event in responses:
-            print(event)
-    asyncio.run(call_agent())
-    ```
-- **Fallback Verification (CURL)**: If the Python SDK fails to register methods, use the REST API:
-  ```bash
-  curl -X POST \
-    -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-    -H "Content-Type: application/json" \
-    https://[REGION]-aiplatform.googleapis.com/v1/projects/[PROJECT]/locations/[REGION]/reasoningEngines/[ID]:streamQuery \
-    -d '{"input": {"message": "Your message", "user_id": "test-user"}}'
-  ```
-- **404 Handling**: If `gemini-2.5-flash` returns a 404, verify that the project has explicit access to that specific model version in the `global` location.
